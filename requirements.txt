@@ -1,0 +1,5 @@
+flask
+flask-cors
+requests
+zammad-py==3.0.0
+redis==4.3.4

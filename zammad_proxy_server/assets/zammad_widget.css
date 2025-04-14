@@ -1,0 +1,188 @@
+/* styles.css */
+
+#zammad_app {
+    max-width: 600px;
+    margin: auto;
+}
+
+#zammad_ticketList ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#zammad_ticketList li {
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+}
+
+#zammad_chatWindow {
+    height: 300px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+#zammad_chatWindow p {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+#zammad_newTicketForm{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+}
+
+#zammad_tickets_container{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5px;
+    gap: 5px;
+    justify-content: center;
+    width: 100%;
+}
+
+#zammad_ticketListView{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#zammad_ticketListViewAddBtn{
+    width: max-content !important;
+    align-self: end;
+}
+
+#zammad_main_header {
+    padding: 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+}
+
+.zammad_tickets_pagination {
+    display: none;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+}
+
+.zammad_preloader {
+    position: fixed;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 9999;
+    top: 0px;
+    left: 0px;
+}
+
+
+/* Chat containers */
+#zammad_chat-main-container{
+    display: flex;
+    overflow-y:auto;
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+    padding-bottom: 160px;
+    padding-top: 10px;
+    flex-direction: column;
+    gap: 10px;
+}
+.zammad_chat-container {
+    border: 2px solid #dedede;
+    background-color: #f1f1f1;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px 0;
+    width: 80%;
+    border-radius: 10px;
+    border-bottom-right-radius: 0px;
+    align-self: end;
+  }
+  
+  /* Darker chat container */
+  .zammad_chat-darker {
+    border-color: #a6d3a6;
+    background-color: #c0e0b7;
+    border-radius: 10px;
+    border-bottom-left-radius: 0px;
+    align-self: start;
+  }
+  
+  /* Clear floats */
+  .zammad_chat-container::after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+  
+  /* Style images */
+  .zammad_chat-container img {
+    width: 100%;
+  }
+  
+  /* Style the right image */
+  .zammad_chat-container img.right {
+    float: right;
+    margin-left: 20px;
+    margin-right:0;
+  }
+  
+  /* Style time text */
+  .zammad_chat-time-right {
+    float: right;
+    color: #aaa;
+  }
+  
+  /* Style time text */
+  .zammad_chat-time-left {
+    float: left;
+    color: #999;
+  }
+
+.zammad_chat-message-container{
+  position: fixed;
+  width: 100%;
+  height: 150px;
+  bottom: 0px;
+  left: 0px;
+  display: flex;
+  flex-direction: column;
+  gap:0px;
+  background-color: white;
+}
+
+.zammad_chat-anchor {
+  margin-top: 50px;
+  height: 30px;
+}
+
+#zammad_ticketsDetailViewHeader{
+  position: fixed;
+  height: 50px;
+  padding: 10px;
+  top:0px;
+  left: 0px;
+  width: 100%;
+  background-color: white;
+  border-bottom: 1px solid black;
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: center;
+}
+
+.zammad-new-message-row{
+  color: rgb(101, 101, 196);
+}
