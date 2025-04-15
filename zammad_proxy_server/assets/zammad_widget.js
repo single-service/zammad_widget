@@ -12,11 +12,16 @@ class ZammadTicketDetailView {
         this.newTicketForm.style.display = 'none';
         this.ticketsDetailView.style.display = 'block';
         document.querySelector(".zammad_chat-message-send-button").setAttribute("data-ticket-id", ticket_id)
-        await this.loadDetailView(ticket_id)
+        let ticket = await this.loadDetailView(ticket_id)
+        this.renderTicketDetail(ticket);
         let messages_elements = document.getElementById('zammad_chat-main-container').children
         let lastElement = messages_elements[messages_elements.length -1]
         // Прокручиваем до последнего элемента
         lastElement.scrollIntoView({ behavior: 'smooth' })
+        this.sendReadMessages(ticket_id)
+        this.INTERVAL_MESSAGE_CHECKER = setInterval(() => {
+            this.getMessagesChat()
+        }, 10000)
         this.hide_preloader()
     }
 
@@ -40,10 +45,49 @@ class ZammadTicketDetailView {
                 return
             }
             const ticket = await response.json();
-            this.renderTicketDetail(ticket);
+            return ticket
         } catch (error) {
             alert(error.message);
         }
+    }
+
+    formChatBody = (item, i) => {
+        var today =  new Date()
+        var chat_timestamp = new Date(item.created_at);
+        let time_str = ""
+        if (chat_timestamp.toDateString() === today.toDateString()) {
+            time_str = chat_timestamp.toLocaleTimeString('ru-RU', { hour: 'numeric', minute: 'numeric' }).replace(/:/g, ':')
+        }else if(chat_timestamp.getFullYear() === today.getFullYear()){
+            time_str = chat_timestamp.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: 'numeric', minute: 'numeric' })
+        }else{
+            time_str = chat_timestamp.toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric' })
+        }
+        
+        
+        let time_side = "right"
+        let assistent_header = ""
+        if(i>0 && item.sender == "Agent"){
+            time_side = "left"
+            assistent_header = "<sub>Менеджер</sub><hr/>"
+        }
+        let attachments_html = ""
+        item.attachments.forEach((att_item) => {
+            let file_format = att_item.filename.split(".").pop().toLowerCase()
+            let file_link = `${this.base_api_url}/attachment/?ticket_id=${item.ticket_id}&chat_id=${item.id}&attachment_id=${att_item.id}`
+            if(file_format == "png" || file_format == "jpg" || file_format == "jpeg"){
+                attachments_html += `
+                    <img src="${file_link}"/><br/>
+                `
+            }else{
+                attachments_html += `<a href="${file_link}" target="_blank">${att_item.filename}</a><br/>`
+            }
+        })
+        return `
+            ${assistent_header}
+            <p>${item.body}</p><br/>
+            ${attachments_html}
+            <span class="zammad_chat-time-${time_side}">${time_str}</span>
+        `
     }
 
     renderTicketDetail = (ticket) => {
@@ -51,44 +95,12 @@ class ZammadTicketDetailView {
         const chatMainContainer = document.getElementById("zammad_chat-main-container")
         ticketsDetailViewTitle.innerHTML = `Заявка #${ticket.number}`
         let chats_html = ""
-        var today =  new Date()
         ticket.chats.forEach((item, i) => {
-            var chat_timestamp = new Date(item.created_at);
-            let time_str = ""
-            if (chat_timestamp.toDateString() === today.toDateString()) {
-                time_str = chat_timestamp.toLocaleTimeString('ru-RU', { hour: 'numeric', minute: 'numeric' }).replace(/:/g, ':')
-            }else if(chat_timestamp.getFullYear() === today.getFullYear()){
-                time_str = chat_timestamp.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: 'numeric', minute: 'numeric' })
-            }else{
-                time_str = chat_timestamp.toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric' })
-            }
-            
-            let darker = ""
-            let time_side = "right"
-            let assistent_header = ""
-            if(i>0 && item.sender == "Agent"){
-                darker = "zammad_chat-darker"
-                time_side = "left"
-                assistent_header = "<sub>Менеджер</sub><hr/>"
-            }
-            let attachments_html = ""
-            item.attachments.forEach((att_item) => {
-                let file_format = att_item.filename.split(".").pop().toLowerCase()
-                let file_link = `${this.base_api_url}/attachment/?ticket_id=${item.ticket_id}&chat_id=${item.id}&attachment_id=${att_item.id}`
-                if(file_format == "png" || file_format == "jpg" || file_format == "jpeg"){
-                    attachments_html += `
-                        <img src="${file_link}"/><br/>
-                    `
-                }else{
-                    attachments_html += `<a href="${file_link}" target="_blank">${att_item.filename}</a><br/>`
-                }
-            })
+            let chat_body = this.formChatBody(item, i)
+            let darker = i>0 && item.sender == "Agent" ? "zammad_chat-darker" : ""
             chats_html += `
-            <div class="zammad_chat-container ${darker}">
-                ${assistent_header}
-                <p>${item.body}</p><br/>
-                ${attachments_html}
-                <span class="zammad_chat-time-${time_side}">${time_str}</span>
+            <div class="zammad_chat-container ${darker}" id="zammad_chat-container_${item.id}">
+                ${chat_body}
             </div>
             `
         })
@@ -144,6 +156,120 @@ class ZammadTicketDetailView {
             error = "Необходимо написать сообщение"
         }
         return error
+    }
+
+    checkNewMessages = async () => {
+        try {
+            const response = await fetch(`${this.base_api_url}/tickets/article/new/?customer=${this.CUSTOMER.username}`, {
+                method: 'GET',
+                headers: {
+                    "Content-Type": "application/json",
+                    'Accept': 'application/json'
+                }
+            });
+    
+            // if (!response.ok) throw new Error(`Не удалось загрузить тикеты:${response.text}`);
+            if (!response.ok){
+                let res = response.text
+                return
+            }
+            let result = await response.json();
+            console.log("New messages", result)
+            if(result.is_new){
+                this.popup("Новые сообщения", "", "info")
+            }
+            this.setNewMessages(result["messages"])
+            // проверка если я уже в нужно чате
+            if(this.ticketsDetailView.style.display == "block"){
+                let ticket_id = document.querySelector(".zammad_chat-message-send-button").getAttribute("data-ticket-id")
+                if(this.NEW_MESSAGES_MAP.hasOwnProperty(ticket_id)){
+                    await this.sendReadMessages(ticket_id)
+                }
+            } 
+            return
+        } catch (error) {
+            alert(error)
+        }
+    }
+
+    setNewMessages = (messages_map=null) => {
+        if(messages_map){
+            this.NEW_MESSAGES_MAP = messages_map
+        }
+        let rows = document.getElementsByClassName("zammad-new-message-row")
+        for(let i=0; i<rows.length; i++){
+            let el = rows[i]
+            let ticket_id = el.getAttribute("data-ticket-id").toString()
+            let messages_count = this.NEW_MESSAGES_MAP[ticket_id]
+            let text = ""
+            if(messages_count){
+                text = `${messages_count} новых сообщений`
+                if(messages_count == 1){
+                    text = `1 новое сообщение`
+                }
+            }
+            el.innerHTML = text
+        }
+    }
+
+    sendReadMessages = async (ticket_id) => {
+        if(!this.NEW_MESSAGES_MAP[ticket_id]){
+            return
+        }
+        try {
+            const response = await fetch(`${this.base_api_url}/articles/read/`, {
+                method: 'PUT',
+                headers: {
+                    "Content-Type": "application/json",
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    customer: this.CUSTOMER.username,
+                    ticket_id: ticket_id
+                })
+            });
+
+            if (!response.ok){
+                let res = response.text
+                return
+            }
+            delete this.NEW_MESSAGES_MAP[ticket_id]
+            this.setNewMessages()
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    getMessagesChat = async () => {
+        let ticket_id = document.querySelector(".zammad_chat-message-send-button").getAttribute("data-ticket-id")
+        let ticket = await this.loadDetailView(ticket_id)
+        let chats = ticket.chats
+        const chat_container = document.getElementById("zammad_chat-main-container")
+        let is_changed = false
+        chats.forEach((item, i) => {
+            if(!is_changed){
+                is_changed = true
+            }
+            let mes = document.getElementById(`zammad_chat-container_${item.id}`)
+            if(!mes){
+                let chat_body = this.formChatBody(item, i)
+                let darker = i>0 && item.sender == "Agent" ? "zammad_chat-darker" : ""
+                let new_mes_el = document.createElement("div")
+                new_mes_el.classList.add("zammad_chat-container")
+                new_mes_el.id = `zammad_chat-container_${item.id}`
+                if(darker != ""){
+                    new_mes_el.classList.add(darker)
+                }
+                new_mes_el.innerHTML = chat_body
+                chat_container.appendChild(new_mes_el)
+                console.log("Сообщение добавлено", item)
+            }
+        })
+        if(is_changed){
+            let anchor = document.querySelector(".zammad_chat-anchor")
+            anchor.parentNode.removeChild(anchor)
+        }
+        console.log("getMessagesChat ticket", ticket)
     }
 }
 
@@ -248,6 +374,10 @@ class ZammadTicketListMixin extends ZammadTicketCreateMixin{
         this.newTicketForm.style.display = 'none';
         this.ticketsDetailView.style.display = 'none';
         document.getElementById("zammad_main_header").scrollIntoView({ behavior: 'instant' })
+        if(this.INTERVAL_MESSAGE_CHECKER !== null){
+            clearInterval(this.INTERVAL_MESSAGE_CHECKER)
+            this.INTERVAL_MESSAGE_CHECKER = null
+        }
     }
 
     showTickets = async (is_open="1", page=1) => {
@@ -418,7 +548,9 @@ class ZammadWidget extends ZammadTicketListMixin{
         this.CUSTOMER = client
         this.CURRENT_TICKETS_PAGE = 1
         this.CURRENT_TICKETS_ISOPEN=true
-        this.NEW_TICKETS = {}
+        this.NEW_TICKETS = []
+        this.NEW_MESSAGES_MAP = {}
+        this.INTERVAL_MESSAGE_CHECKER = null
 
         this.widget_load()
     }
@@ -557,53 +689,6 @@ class ZammadWidget extends ZammadTicketListMixin{
         } catch (error) {
             alert(error)
             alert("Пользователь не найден!");
-        }
-    }
-
-    checkNewMessages = async () => {
-        try {
-            const response = await fetch(`${this.base_api_url}/tickets/article/new/?customer=${this.CUSTOMER.username}`, {
-                method: 'GET',
-                headers: {
-                    "Content-Type": "application/json",
-                    'Accept': 'application/json'
-                }
-            });
-    
-            // if (!response.ok) throw new Error(`Не удалось загрузить тикеты:${response.text}`);
-            if (!response.ok){
-                let res = response.text
-                return
-            }
-            let result = await response.json();
-            console.log("New messages", result)
-            if(result.is_new){
-                this.popup("Новые сообщения", "", "info")
-            }
-            this.setNewMessages(result["messages"])
-            return
-        } catch (error) {
-            alert(error)
-        }
-    }
-
-    setNewMessages = (messages_map=null) => {
-        if(messages_map){
-            this.NEW_TICKETS = messages_map
-        }
-        let rows = document.getElementsByClassName("zammad-new-message-row")
-        for(let i=0; i<rows.length; i++){
-            let el = rows[i]
-            let ticket_id = el.getAttribute("data-ticket-id").toString()
-            let messages_count = this.NEW_TICKETS[ticket_id]
-            let text = ""
-            if(messages_count){
-                text = `${messages_count} новых сообщений`
-                if(messages_count == 1){
-                    text = `1 новое сообщение`
-                }
-            }
-            el.innerHTML = text
         }
     }
 }

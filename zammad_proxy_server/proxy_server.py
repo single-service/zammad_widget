@@ -211,6 +211,11 @@ def zammad_callback():
     logger.info(f"Parsed JSON Data: {data}")
     key = f"{data['action']}_{data['username']}"
     ticket_id = str(data['ticket_id'])
+    sender = data['sender']
+    if sender == "Customer":
+        return jsonify({}), 200
+    if data.get("articles_count") == 1:
+        return jsonify({}), 200
     messages_body = cache_service.get(key)
     if not messages_body:
         messages_body = {
@@ -233,7 +238,22 @@ def serve_assets(filename):
     try:
         return send_from_directory('assets', filename)
     except FileNotFoundError:
-        abort(404) 
+        abort(404)
+
+@app.route('/articles/read/', methods=['PUT'])
+def set_read_messages():
+    data = request.get_json(silent=True)
+    logger.info(f"set_read_messages Data: {data}")
+    customer_username = data["customer"].replace("@", "")
+    ticket_id = data["ticket_id"]
+    key = f"new_message_{customer_username}"
+    messages_body = cache_service.get(key)
+    if messages_body:
+        messages_body = json.loads(messages_body)
+        if messages_body.get(ticket_id):
+            del messages_body[ticket_id]
+            cache_service.set(key, json.dumps(messages_body))
+    return jsonify({}), 200
 
 if __name__ == '__main__':
     app.run(debug=DEBUG)
